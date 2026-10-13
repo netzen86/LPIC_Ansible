@@ -1,0 +1,59 @@
+---
+- name: Enable internet services
+  hosts: serverb.lab.example.com
+  become: true
+  tasks:
+  - name: latest firewalld version installed
+    dnf:
+      name: firewalld
+      state: latest
+  - name: latest httpd version installed
+    dnf:
+      name: httpd
+      state: latest
+  - name: latest mariadb-server version installed
+    dnf:
+      name: mariadb-server
+      state: latest
+  - name: latest php version installed
+    dnf:
+      name: php
+      state: latest
+  - name: latest php-mysqlnd version installed
+    dnf:
+      name: php-mysqlnd
+      state: latest
+  - name: firewalld is enable and ruuning
+    service:
+      name: firewalld
+      enabled: true
+      state: started
+  - name: Ensure HTTP traffic is allowed
+    ansible.posix.firewalld:
+      service: http
+      permanent: yes
+      state: enabled
+      immediate: yes
+#  reloaded, restarted, started, stopped, 
+  - name: httpd is enable and ruuning
+    service:
+      name: httpd
+      enabled: true
+      state: started
+  - name: mariadb-server is enable and started
+    service:
+      name: mariadb
+      enabled: true
+      state: started
+  - name: Download index.php
+    ansible.builtin.get_url:
+      url: http://materials.example.com/labs/playbook-review/index.php
+      dest: /var/www/html/
+
+- name: Check web server
+  hosts: localhost
+  tasks:
+    - name: test web service on serverb
+      ansible.builtin.uri:
+        url: http://serverb.lab.example.com
+        status_code: 200
