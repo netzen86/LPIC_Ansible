@@ -3,57 +3,58 @@
   hosts: serverb.lab.example.com
   become: true
   tasks:
-  - name: latest firewalld version installed
-    dnf:
+   - name: Present firewalld version installed
+     ansible.builtin.dnf:
       name: firewalld
-      state: latest
-  - name: latest httpd version installed
-    dnf:
+      state: present
+   - name: Present httpd version installed
+     ansible.builtin.dnf:
       name: httpd
-      state: latest
-  - name: latest mariadb-server version installed
-    dnf:
+      state: present
+   - name: Present mariadb-server version installed
+     ansible.builtin.dnf:
       name: mariadb-server
-      state: latest
-  - name: latest php version installed
-    dnf:
+      state: present
+   - name: Present php version installed
+     ansible.builtin.dnf:
       name: php
-      state: latest
-  - name: latest php-mysqlnd version installed
-    dnf:
+      state: present
+   - name: Present php-mysqlnd version installed
+     ansible.builtin.dnf:
       name: php-mysqlnd
-      state: latest
-  - name: firewalld is enable and ruuning
-    service:
+      state: present
+   - name: Firewalld is enable and ruuning
+     ansible.builtin.service:
       name: firewalld
       enabled: true
       state: started
-  - name: Ensure HTTP traffic is allowed
-    ansible.posix.firewalld:
+   - name: Ensure HTTP traffic is allowed
+     ansible.posix.firewalld:
       service: http
-      permanent: yes
+      permanent: true
       state: enabled
-      immediate: yes
-#  reloaded, restarted, started, stopped, 
-  - name: httpd is enable and ruuning
-    service:
+      immediate: true
+   # reloaded, restarted, started, stopped.
+   - name: HTTPD is enable and ruuning
+     ansible.builtin.service:
       name: httpd
       enabled: true
       state: started
-  - name: mariadb-server is enable and started
-    service:
+   - name: Mariadb-server is enable and started
+     ansible.builtin.service:
       name: mariadb
       enabled: true
       state: started
-  - name: Download index.php
-    ansible.builtin.get_url:
+   - name: Download index.php
+     ansible.builtin.get_url:
       url: http://materials.example.com/labs/playbook-review/index.php
       dest: /var/www/html/
+      mode: '0644'
 
 - name: Check web server
   hosts: localhost
   tasks:
-    - name: test web service on serverb
-      ansible.builtin.uri:
-        url: http://serverb.lab.example.com
-        status_code: 200
+   - name: Test web service on serverb
+     ansible.builtin.uri:
+      url: http://serverb.lab.example.com
+      status_code: 200
