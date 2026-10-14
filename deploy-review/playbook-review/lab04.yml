@@ -1,0 +1,108 @@
+---
+- name: Setup secure  internet services
+  hosts: internetweb
+  become: true
+  vars:
+    firewall_pkg: firewalld
+    firewall_svc: firewalld
+    web_pkg: httpd
+    web_svc: httpd
+    ssl_pkg: mod_ssl
+    httpdconf_src: ../files/httpd.conf
+    httpdconf_dest: /etc/httpd/conf/httpd.conf
+    htaccess_src: ../files/.htaccess
+    secrets_dir: /etc/httpd/secrets
+    secrets_src: ../files/htpasswd
+    secrets_dest: "{{ secrets_dir }}/htpasswd"
+    web_root: /var/www/html
+
+  tasks:
+    - name: Install firewall_pkg, web_pkg и ssl_pkg.
+      ansible.builtin.dnf:
+        name: ["{{ firewall_pkg }}", "{{ web_pkg }}", "{{ ssl_pkg }}"]
+        state: present
+    - name: Copy config HTTPD
+      ansible.builtin.copy:
+        src: "{{ httpdconf_src }}"
+        dest: "{{ httpdconf_dest }}"
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Create folder for secret
+      ansible.builtin.file:
+        path: "{{ secrets_dir }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0500'
+    - name: Copy config htpasswd
+      ansible.builtin.copy:
+        src: "{{ secrets_src }}"
+        dest: "{{ secrets_dest }}"
+        owner: apache
+        group: apache
+        mode: '0400'
+    - name: Create folder for htaccess
+      ansible.builtin.file:
+        path: "{{ web_root }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+    - name: Copy config htaccess
+      ansible.builtin.copy:
+        src: "{{ htaccess_src }}"
+        dest: "{{ web_root }}/.htaccess"
+        owner: apache
+        group: apache
+        mode: '0400'
+    - name: Create index.html file
+      ansible.builtin.copy:
+        content: '{{ ansible_facts.hostname }} {{ ansible_facts.default_ipv4.address }} was set up Ansible.'
+        dest: "{{ web_root }}/index.html"
+        # owner: apache
+        # group: apache
+        mode: '0644'
+      register: copy_result
+    - name: Debug result creating file
+      ansible.builtin.debug:
+        var: copy_result
+    - name: Firewalld is enable and ruuning
+      ansible.builtin.service:
+        name: firewalld
+        enabled: true
+        state: started
+    - name: Ensure HTTP traffic is allowed
+      ansible.posix.firewalld:
+        service: https
+        permanent: true
+        state: enabled
+        immediate: true
+      failed_when: false
+    - name: WEB service enable and running
+      ansible.builtin.service:
+        name: "{{ web_svc }}"
+        enabled: true
+        state: started
+
+- name: Check authentication secure internet services
+  hosts: localhost
+  vars:
+    web_user: guest
+  vars_files:
+    ../vars/secret.yml
+
+  tasks:
+    - name: Catch info from site https://serverb.lab.example.com
+      ansible.builtin.uri:
+        url: https://serverb.lab.example.com
+        user: "{{ web_user }}"
+        password: "{{ web_pass }}"
+        status_code: 200
+        force_basic_auth: true
+        validate_certs: false
+        return_content: true
+      register: http_response
+    - name: Show response site https://serverb.lab.example.com
+      ansible.builtin.debug:
+        var: http_response
