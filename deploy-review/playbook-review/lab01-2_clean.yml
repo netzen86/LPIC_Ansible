@@ -5,9 +5,12 @@
   tasks:
    - name: Present firewalld, httpd, mariadb-server, php, php-mysqlnd version uninstalled
      ansible.builtin.dnf:
-      name: [firewalld, httpd, mariadb-server, php, php-mysqlnd]
+      name: [firewalld, httpd, httpd-filesystem, mariadb-server, php, php-mysqlnd, web_pkg, ssl_pkg]
       state: absent
    - name: Remove HTTPD files
      ansible.builtin.file:
-      path: /var/www/
+      path: "{{ item }}"
       state: absent
+     loop:
+      - /etc/httpd/
+      - /var/www/
