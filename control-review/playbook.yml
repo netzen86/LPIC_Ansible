@@ -1,0 +1,73 @@
+---
+- name: Playbook Control Lab
+  hosts: webservers
+  vars_files: vars.yml
+  gather_facts: true
+  tasks:
+    # - name: Print all available facts
+    #   ansible.builtin.debug:
+    #     var: ansible_facts
+    # Fail Fast Message
+    - name: Check hw required
+      ansible.builtin.fail:
+        msg: "{{ inventory_hostname }} not enough memory or OS {{ ansible_facts['distribution'] }} not RedHat"
+      when: ansible_facts["memory_mb"]["real"]["total"] <= min_ram_mb or
+       ansible_facts["distribution"] != "RedHat"
+      failed_when: false
+
+    # Install all Packages
+    - name: Ensure required packages are present
+      ansible.builtin.dnf:
+        name: "{{ item }}"
+        state: latest
+      loop: "{{ packages }}"
+
+    # Enable and start services
+    - name: On and run services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop: "{{ services }}"
+
+    # Block of config tasks
+    - name: Cofiguration for tasts
+      block:
+        - name: Check folder exist
+          ansible.builtin.file:
+            path: "{{ ssl_cert_dir }}"
+            state: directory
+            mode: '0755'
+        - name: Copy cfg to vm
+          ansible.builtin.copy:
+            src: "{{ item.src }}"
+            dest: "{{ item.dest }}"
+            mode: '0755'
+          loop: "{{ web_config_files }}"
+          notify: Restart web service
+      rescue:
+        - name: Message when failed copy files
+          ansible.builtin.debug:
+            msg: >
+              One or more of the configuration
+              changes failed,but the web service
+              is still active..
+
+    # Configure the firewall
+    - name: Setup fw
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        permanent: true
+        state: enabled
+        immediate: true
+      loop:
+        - http
+        - https
+      notify: Restart web service
+
+  # Add handlers
+  handlers:
+    - name: Restart web service
+      ansible.builtin.service:
+        name: "{{ web_service }}"
+        state: restarted
